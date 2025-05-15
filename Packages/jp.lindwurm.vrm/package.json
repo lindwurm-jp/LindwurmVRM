@@ -1,0 +1,12 @@
+{
+  "name": "jp.lindwurm.vrm",
+  "displayName": "Lindwurm VRM Library",
+  "version": "1.0.0",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.vrmc.gltf": "0.129.0",
+    "com.vrmc.univrm": "0.129.0",
+    "com.vrmc.vrm": "0.129.0"
+  },
+  "description": "VRM data using package"
+}
