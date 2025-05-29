@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using UniGLTF;
 using UniGLTF.Extensions.VRMC_vrm;
@@ -105,13 +105,26 @@ namespace Lindwurm.VRM
 		/// <returns></returns>
 		public async Task LoadMetaAsync(string path, System.Action<Meta> metaInformationCallback)
 		{
-			using var data = new GlbFileParser(path).Parse();
-			var vrm = new UniVRM.VRMData(data);
-			var context = new UniVRM.VRMImporterContext(vrm);
-			var meta = await context.ReadMetaAsync(new RuntimeOnlyAwaitCaller());
-			this.meta.thumbnail = meta.Thumbnail;
-			this.meta.name = meta.Title;
-			metaInformationCallback.Invoke(this.meta);
+            this.metaInformationCallback = metaInformationCallback;
+            using var data = new GlbFileParser(path).Parse();
+            var vrm10 = Vrm10Data.Parse(data);
+            if (vrm10 != null)
+            {
+                using var loader = new Vrm10Importer(vrm10);
+                var thumbnail = await loader.LoadVrmThumbnailAsync();
+                SetMetaInfomation(thumbnail, vrm10.VrmExtension.Meta, null);
+            }
+            else
+            {
+                using var migratedData = Vrm10Data.Migrate(data, out vrm10, out var migrationData);
+                if (migratedData == null)
+                {
+                    throw new System.Exception(migrationData?.Message ?? "Failed to migrate.");
+                }
+                using var loader = new Vrm10Importer(vrm10);
+                var thumbnail = await loader.LoadVrmThumbnailAsync();
+                SetMetaInfomation(thumbnail, null, migrationData.OriginalMetaBeforeMigration);
+            }
 		}
 
 		/// <summary>
