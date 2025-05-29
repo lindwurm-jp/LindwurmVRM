@@ -4,7 +4,6 @@ using UniGLTF;
 using UniGLTF.Extensions.VRMC_vrm;
 using UnityEngine;
 using UniVRM10;
-using UniVRM = VRM;
 
 namespace Lindwurm.VRM
 {
@@ -106,9 +105,7 @@ namespace Lindwurm.VRM
         public async Task LoadMetaAsync(string path, System.Action<Meta> metaInformationCallback)
         {
             this.metaInformationCallback = metaInformationCallback;
-            IAwaitCaller awaitCaller = Application.isPlaying
-                ? new RuntimeOnlyAwaitCaller()
-                : new ImmediateCaller();
+            var awaitCaller = new RuntimeOnlyAwaitCaller();
             using var gltfData = await awaitCaller.Run(() =>
             {
                 var bytes = System.IO.File.ReadAllBytes(path);
@@ -118,7 +115,7 @@ namespace Lindwurm.VRM
             if (vrm10 != null)
             {
                 using var loader = new Vrm10Importer(vrm10);
-                var thumbnail = await loader.LoadVrmThumbnailAsync(awaitCaller);
+                var thumbnail = await loader.LoadVrmThumbnailAsync();
                 SetMetaInfomation(thumbnail, vrm10.VrmExtension.Meta, null);
             }
             else
@@ -129,7 +126,7 @@ namespace Lindwurm.VRM
                     throw new System.Exception(migrationData?.Message ?? "Failed to migrate.");
                 }
                 using var loader = new Vrm10Importer(vrm10);
-                var thumbnail = await loader.LoadVrmThumbnailAsync(awaitCaller);
+                var thumbnail = await loader.LoadVrmThumbnailAsync();
                 SetMetaInfomation(thumbnail, null, migrationData.OriginalMetaBeforeMigration);
             }
         }
