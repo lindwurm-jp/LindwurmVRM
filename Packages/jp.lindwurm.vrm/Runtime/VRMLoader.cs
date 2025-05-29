@@ -97,35 +97,42 @@ namespace Lindwurm.VRM
             }
         }
 
-		/// <summary>
-		/// メタデータを取得する
-		/// </summary>
-		/// <param name="path"></param>
-		/// <param name="metaInformationCallback"></param>
-		/// <returns></returns>
-		public async Task LoadMetaAsync(string path, System.Action<Meta> metaInformationCallback)
-		{
+        /// <summary>
+        /// メタデータを取得する
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="metaInformationCallback"></param>
+        /// <returns></returns>
+        public async Task LoadMetaAsync(string path, System.Action<Meta> metaInformationCallback)
+        {
             this.metaInformationCallback = metaInformationCallback;
-            using var data = new GlbFileParser(path).Parse();
-            var vrm10 = Vrm10Data.Parse(data);
+            IAwaitCaller awaitCaller = Application.isPlaying
+                ? new RuntimeOnlyAwaitCaller()
+                : new ImmediateCaller();
+            using var gltfData = await awaitCaller.Run(() =>
+            {
+                var bytes = System.IO.File.ReadAllBytes(path);
+                return new GlbLowLevelParser(path, bytes).Parse();
+            });
+            var vrm10 = Vrm10Data.Parse(gltfData);
             if (vrm10 != null)
             {
                 using var loader = new Vrm10Importer(vrm10);
-                var thumbnail = await loader.LoadVrmThumbnailAsync();
+                var thumbnail = await loader.LoadVrmThumbnailAsync(awaitCaller);
                 SetMetaInfomation(thumbnail, vrm10.VrmExtension.Meta, null);
             }
             else
             {
-                using var migratedData = Vrm10Data.Migrate(data, out vrm10, out var migrationData);
+                using var migratedData = Vrm10Data.Migrate(gltfData, out vrm10, out var migrationData);
                 if (migratedData == null)
                 {
                     throw new System.Exception(migrationData?.Message ?? "Failed to migrate.");
                 }
                 using var loader = new Vrm10Importer(vrm10);
-                var thumbnail = await loader.LoadVrmThumbnailAsync();
+                var thumbnail = await loader.LoadVrmThumbnailAsync(awaitCaller);
                 SetMetaInfomation(thumbnail, null, migrationData.OriginalMetaBeforeMigration);
             }
-		}
+        }
 
 		/// <summary>
 		/// VRMファイル読み込み
@@ -140,7 +147,7 @@ namespace Lindwurm.VRM
             {
                 status = Status.Loading;
                 this.metaInformationCallback = metaInformationCallback;
-				var vrm10 = await Vrm10.LoadPathAsync(
+                var vrm10 = await Vrm10.LoadPathAsync(
 					path,
 					canLoadVrm0X: true,
 					controlRigGenerationOption: ControlRigGenerationOption.None,
