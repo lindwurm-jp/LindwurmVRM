@@ -105,7 +105,9 @@ namespace Lindwurm.VRM
         public async Task LoadMetaAsync(string path, System.Action<Meta> metaInformationCallback)
         {
             this.metaInformationCallback = metaInformationCallback;
-            var awaitCaller = new RuntimeOnlyAwaitCaller();
+            IAwaitCaller awaitCaller = Application.isPlaying
+                ? new RuntimeOnlyAwaitCaller()
+                : new ImmediateCaller();
             using var gltfData = await awaitCaller.Run(() =>
             {
                 var bytes = System.IO.File.ReadAllBytes(path);
@@ -230,7 +232,10 @@ namespace Lindwurm.VRM
             UniGLTF.Extensions.VRMC_vrm.Meta meta,
             UniVRM10.Migration.Vrm0Meta meta0)
         {
-            this.meta.thumbnail = thumbnail;
+            if (this.meta.thumbnail)
+                Object.Destroy(this.meta.thumbnail);
+            this.meta.thumbnail = new Texture2D(thumbnail.width, thumbnail.height, thumbnail.format, false);
+            Graphics.CopyTexture(thumbnail, this.meta.thumbnail);
             if (meta != null)
             {
                 this.meta.name = meta.Name;
@@ -261,7 +266,9 @@ namespace Lindwurm.VRM
 					if (status == Status.Loading)
 						cts.Cancel();
 					cts.Dispose();
-					if (instance)
+                    if (meta.thumbnail)
+                        Object.Destroy(meta.thumbnail);
+                    if (instance)
 						Object.Destroy(instance.gameObject);
 					instance = null;
 				}
